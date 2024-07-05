@@ -1,78 +1,39 @@
-const path = require('path');
 const pool = require('../db/db.js');
-// const readXlsxFile = require('read-excel-file/node');
-const excelToJson = require('convert-excel-to-json');
-const fs = require('fs');
 
-const handleUploadedFile_old = async (req, res) => {
-    if (!req.file) {
-        return res.status(400).send({
-            success: false,
-            Error: 'NO file uplodaded or Invalid fileType.'
-        });
-    }
+const handleUploadedFile = async (req, res) => {
     try {
-        const filePath = path.join(
-            __dirname,
-            '..', 'files',
-            req.file.filename
-        );
-        const rows = await readXlsxFile(filePath);
-        for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            const primaryKeyValue = row[0];
-
-            // check if row exists -------------------
-            const checkQuery = 'SELECT * FROM students WHERE "emailid"=$1;';
-            const checkResult = await pool.query(checkQuery, [primaryKeyValue]);
-
-            console.log(primaryKeyValue);
-            console.log(checkResult.rows);
-
-            if (checkResult.rowCount === 0) {
-                const insertQuery = `
-                    INSERT INTO students ("emailid", "name")
-                    VALUES ($1, $2);
-                `;
-                await pool.query(insertQuery, [row[0], row[1]]);
+        const excelData = req.excel_data;
+        // await syncWithDb(result.Sheet1);
+        const checkQuery = 'SELECT * FROM students WHERE "emailid"=$1;'; const insertQuery = `
+            INSERT INTO students ("emailid", "name")
+            VALUES ($1, $2);
+        `;
+        const updateQuery = `
+            UPDATE students 
+            SET "name"=$1 WHERE "emailid"=$2;
+        `
+        // sync data in db ------------------------------------------
+        for (let i = 1; i < excelData.length; i++) {
+            const row = excelData[i];
+            const primaryKey = row.emailid;
+            const chekIfExists = await pool.query(checkQuery, [primaryKey]);
+            if (chekIfExists.rowCount === 0) {
+                await pool.query(insertQuery, [primaryKey, row.name]);
+                // console.log("insert Data");
+            } else {
+                await pool.query(updateQuery, [row.name, primaryKey]);
+                // console.log("update Data");
             }
         }
         res.json({
             success: true,
-            message: 'Inserting done',
-            data: rows
+            status: 'SUCCESS',
+            data: excelData
         });
     } catch (error) {
         res.json({
             success: false,
-            error
-        });
-    }
-}
-
-const handleUploadedFile = async (req, res) => {
-    try {
-        const filePath = path.join(
-            __dirname,
-            '..', 'constants', 'files',
-            req.file.filename
-        );
-        console.log("filePath:", filePath);
-        const result = excelToJson({
-            source: fs.readFileSync(filePath),
-            columnToKey: {
-                A: "emailid",
-                B: "name"
-            }
-        });
-        res.json({
-            success: true,
-            data: result
-        })
-
-    } catch (error) {
-        res.json({
-            success: false,
+            status: 'FAILED',
             error
         });
     }
