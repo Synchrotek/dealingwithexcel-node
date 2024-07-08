@@ -28,9 +28,11 @@ const checkFileAndExtractData = (req, res, next) => {
         '..', 'constants', 'files',
         req.file.filename
     );
-    console.log("filePath:", filePath);
     const result = excelToJson({
         source: fs.readFileSync(filePath),
+        header: {
+            rows: 1
+        },
         columnToKey: {
             A: "emailid",
             B: "name"

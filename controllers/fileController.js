@@ -1,10 +1,12 @@
 const pool = require('../db/db.js');
+const sendMail = require('../utils/sendmail.js');
 
 const handleUploadedFile = async (req, res) => {
     try {
         const excelData = req.excel_data;
         // await syncWithDb(result.Sheet1);
-        const checkQuery = 'SELECT * FROM students WHERE "emailid"=$1;'; const insertQuery = `
+        const checkQuery = 'SELECT * FROM students WHERE "emailid"=$1;';
+        const insertQuery = `
             INSERT INTO students ("emailid", "name")
             VALUES ($1, $2);
         `;
@@ -25,6 +27,11 @@ const handleUploadedFile = async (req, res) => {
                 // console.log("update Data");
             }
         }
+        sendMail({
+            email: "useremail@emaill.com",
+            success: true,
+            attachmentFileName: req.file.filename
+        });
         res.json({
             success: true,
             status: 'SUCCESS',
@@ -37,6 +44,7 @@ const handleUploadedFile = async (req, res) => {
             error
         });
     }
+
 }
 
 module.exports = {
